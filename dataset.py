@@ -64,8 +64,9 @@ class ImageDataset(Dataset):
             self.pre_transform = transforms.Compose([
                 transforms.RandomCrop(self.image_size, padding=4),
                 # TrivialAugmentWide(),
-                # transforms.RandomRotation([0, 270]),
+                ## transforms.RandomRotation([0, 270]),
                 transforms.RandomHorizontalFlip(0.5),
+                #transforms.RandomVerticalFlip(0.5),
             ])
         elif self.mode == "Valid" or self.mode == "Test":
             # Use PyTorch's own data enhancement to enlarge and enhance data
