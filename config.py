@@ -26,12 +26,13 @@ device = torch.device("cuda", 0)
 # Turning on when the image size does not change during training can speed up training
 cudnn.benchmark = True
 # Model arch name
-model_arch_name = "resnet110_bottleneck_v1"
+model_arch_name = "resnet20_bottleneck_v1"
 warmup = True
-regularization = True
+regularization = False
+k = 1
 # Model normalization parameters
-model_mean_parameters = [0.485, 0.456, 0.406]
-model_std_parameters = [1,1,1] #[0.229, 0.224, 0.225]
+model_mean_parameters = [0.49139968, 0.48215845, 0.4465309]
+model_std_parameters = [1 , 1, 1] #[0.12835708, 0.12578596, 0.15331733]
 # Model number class
 model_num_classes = 10
 # Current configuration parameter method
@@ -42,8 +43,7 @@ exp_name = f"{model_arch_name}-CIFAR10" + n
 
 if mode == "train":
     # Dataset address
-    train_image_dir = "./data/CIFAR10/CIFAR10_img_train"
-    valid_image_dir = "./data/CIFAR10/CIFAR10_img_val"
+    image_dir = "./data/CIFAR10/CIFAR10_img_train"
 
     image_size = 36
     batch_size = 128
@@ -57,24 +57,23 @@ if mode == "train":
 
     # Total num epochs
         # 164 per 50000 imgs, 205 per 40000 (corrispondono piu o meno a 64000 steps)
-    epochs = 164 if not warmup else 166 # prime 2 epoche di warm-up
+    epochs = 207 if warmup else 205 # prime 2 epoche di warm-up
 
     # Loss parameters
     # loss_label_smoothing = 0 #.1
     loss_weights = 1.0
-    l2_lambda = 0.5e-4 if regularization else 0 # 1e-4, 2e-4, 3e-4
+    l2_lambda = 2e-4 if regularization else 0 # 1e-4, 2e-4, 3e-4
 
     # Optimizer parameter
     model_lr = 0.1
     model_momentum = 0.9
     model_weight_decay = 1e-04
-    # model_ema_decay = 0.99998
     
     # Scheduler parameters
     warmup_drop = 2 # about 800 steps
-    primo_drop = 82 # 82 epoche: 32000 steps (batch_size = 128 e dataset 50000 elementi)
+    primo_drop = 102 # 82 epoche: 32000 steps (batch_size = 128 e dataset 50000 elementi)
                     # 102 epoche: 32000 steps (batch_size = 128 e dataset 40000 elementi)
-    secondo_drop = 123 # 123  epoche: 48000 steps (batch_size = 128 e dataset 50000 elementi) 
+    secondo_drop = 138 # 123  epoche: 48000 steps (batch_size = 128 e dataset 50000 elementi) 
                     # 138 epoche: 48000 steps (batch_size = 128 e dataset 40000 elementi)
 
     # How many iterations to print the training/validate result
@@ -83,14 +82,14 @@ if mode == "train":
 
 if mode == "test":
     # Test data address
-    test_image_dir = "./data/CIFAR10/CIFAR10_img_val"
+    test_image_dir = "./data/CIFAR10/CIFAR10_img_test"
 
     # Test dataloader parameters
-    image_size = 34
+    image_size = 32
     batch_size = 128
     num_workers = 4
 
     # How many iterations to print the testing result
     test_print_frequency = 20
 
-    model_weights_path = "./results/pretrained_models/ResNet18-CIFAR10-57bb63e.pth.tar"
+    model_weights_path = "./results/pretrained_models/resnet56_last.pth.tar"

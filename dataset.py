@@ -14,7 +14,7 @@
 import queue
 import sys
 import threading
-from glob import glob
+# from glob import glob
 from typing import Union
 
 import cv2
@@ -49,10 +49,10 @@ class ImageDataset(Dataset):
             and the verification data set is not for data enhancement.
     """
 
-    def __init__(self, image_dir: str, image_size: int, mean: list, std: list, mode: str) -> None:
+    def __init__(self, image_size: int, image_file_paths: list, mean: list, std: list, mode: str) -> None: # image_dir: str,
         super(ImageDataset, self).__init__()
         # Iterate over all image paths
-        self.image_file_paths = glob(f"{image_dir}/*/*")
+        self.image_file_paths =  image_file_paths # glob(f"{image_dir}/*/*")
         # Form image class label pairs by the folder where the image is located
         # _, self.class_to_idx = find_classes(image_dir)
         self.image_size = image_size
@@ -62,11 +62,10 @@ class ImageDataset(Dataset):
         if self.mode == "Train":
             # Use PyTorch's own data enhancement to enlarge and enhance data
             self.pre_transform = transforms.Compose([
-                transforms.RandomResizedCrop(self.image_size),
+                transforms.RandomCrop(self.image_size, padding=4),
                 # TrivialAugmentWide(),
-                transforms.RandomRotation([0, 270]),
+                # transforms.RandomRotation([0, 270]),
                 transforms.RandomHorizontalFlip(0.5),
-                transforms.RandomVerticalFlip(0.5),
             ])
         elif self.mode == "Valid" or self.mode == "Test":
             # Use PyTorch's own data enhancement to enlarge and enhance data
@@ -79,7 +78,7 @@ class ImageDataset(Dataset):
 
         self.post_transform = transforms.Compose([
             transforms.ConvertImageDtype(torch.float),
-            # transforms.Normalize(mean, std)
+            transforms.Normalize(mean, std)
         ])
 
     def __getitem__(self, batch_index: int) -> Union[torch.Tensor, int]:
@@ -87,7 +86,7 @@ class ImageDataset(Dataset):
         # Read a batch of image data
         if image_name.split(".")[-1].lower() in IMG_EXTENSIONS:
             image = cv2.imread(self.image_file_paths[batch_index])
-            target = int(image_dir[-1]) #self.class_to_idx[image_dir]
+            target = int(image_dir[-1])
         else:
             raise ValueError(f"Unsupported image extensions, Only support `{IMG_EXTENSIONS}`, "
                              "please check the image file extensions.")
@@ -107,7 +106,7 @@ class ImageDataset(Dataset):
 
         # Data postprocess
         tensor = self.post_transform(tensor)
-
+        
         return {"image": tensor, "target": target}
 
     def __len__(self) -> int:
