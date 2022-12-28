@@ -62,10 +62,10 @@ class ImageDataset(Dataset):
         if self.mode == "Train":
             # Use PyTorch's own data enhancement to enlarge and enhance data
             self.pre_transform = transforms.Compose([
-                #transforms.RandomResizedCrop(self.image_size),
+                transforms.RandomResizedCrop(self.image_size),
                 # TrivialAugmentWide(),
                 #transforms.RandomRotation([0, 270]),
-                #transforms.RandomHorizontalFlip(0.5),
+                transforms.RandomHorizontalFlip(0.5),
                 #transforms.RandomVerticalFlip(0.5),
             ])
         elif self.mode == "Valid" or self.mode == "Test":
@@ -79,7 +79,7 @@ class ImageDataset(Dataset):
 
         self.post_transform = transforms.Compose([
             transforms.ConvertImageDtype(torch.float),
-            transforms.Normalize(mean, std)
+            #transforms.Normalize(mean, std)
         ])
 
     def __getitem__(self, batch_index: int) -> Union[torch.Tensor, int]:
