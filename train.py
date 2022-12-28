@@ -332,7 +332,7 @@ def validate(
             batch_size = images.size(0)
 
             # Inference
-            output = model(images)
+            output = model(images/255)
             
 
             # measure accuracy and record loss
