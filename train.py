@@ -91,7 +91,7 @@ def main():
         make_directory(samples_dir)
         make_directory(results_dir)
         name = '_warmup' if config.warmup else ''
-        reg = str(l2_lambda) if config.regularization else ''
+        reg = str(config.l2_lambda) if config.regularization else ''
         now = datetime.now().strftime('%y_%m_%d__%H_%M_%S')
         # Create training process log file
         writer = SummaryWriter(os.path.join("samples", "logs", config.exp_name+reg+name,now))
