@@ -52,12 +52,14 @@ class _BasicBlock(nn.Module):
             downsample: Optional[nn.Module] = None,
             groups: int = 1,
             base_channels: int = 16,
+            shortcut: str = "identity",
     ) -> None:
         super(_BasicBlock, self).__init__()
         self.stride = stride
         self.downsample = downsample
         self.groups = groups
         self.base_channels = base_channels
+        self.shortcut = shortcut
 
         self.conv1 = nn.Conv2d(in_channels, out_channels, (3, 3), (stride, stride), (1, 1), bias=False)
         self.bn1 = nn.BatchNorm2d(out_channels)
@@ -76,7 +78,11 @@ class _BasicBlock(nn.Module):
         out = self.bn2(out)
 
         if self.downsample is not None:
-            identity = self.downsample(x)
+            if self.shortcut == "identity":
+                shape = identity.shape[2]//4            
+                identity = self.downsample(x)[:,:, shape:shape*3, shape:shape*3]
+            elif self.shortcut == "projection":
+                identity = self.downsample(x)
 
         out = torch.add(out, identity)
         out = self.relu(out)
@@ -95,12 +101,15 @@ class _Bottleneck_v1(nn.Module):
             downsample: Optional[nn.Module] = None,
             groups: int = 1,
             base_channels: int = 16,
+            shortcut: str = "identity",
+
     ) -> None:
         super(_Bottleneck_v1, self).__init__()
         self.stride = stride
         self.downsample = downsample
         self.groups = groups
         self.base_channels = base_channels
+        self.shortcut = shortcut
 
         channels = int(out_channels * (base_channels / 16.0)) * groups
 
@@ -127,7 +136,11 @@ class _Bottleneck_v1(nn.Module):
         out = self.bn3(out)
 
         if self.downsample is not None:
-            identity = self.downsample(x)
+            if self.shortcut == "identity":
+                shape = identity.shape[2]//4            
+                identity = self.downsample(x)[:,:, shape:shape*3, shape:shape*3]
+            elif self.shortcut == "projection":
+                identity = self.downsample(x)
 
         out = torch.add(out, identity)
         out = self.relu(out)
@@ -145,13 +158,15 @@ class _BasicBlock_v2(nn.Module):
             downsample: Optional[nn.Module] = None,
             groups: int = 1,
             base_channels: int = 16,
+            shortcut: str = "identity",
     ) -> None:
         super(_BasicBlock_v2, self).__init__()
         self.stride = stride
         self.downsample = downsample
         self.groups = groups
         self.base_channels = base_channels
-
+        self.shortcut = shortcut
+        
         self.bn1 = nn.BatchNorm2d(in_channels)
         self.conv1 = nn.Conv2d(in_channels, out_channels, (3, 3), (stride, stride), (1, 1), bias=False)
         self.bn2 = nn.BatchNorm2d(out_channels)
@@ -170,7 +185,12 @@ class _BasicBlock_v2(nn.Module):
         out = self.conv2(out)
 
         if self.downsample is not None:
-            identity = self.downsample(x)
+            if self.shortcut == "identity":
+                shape = identity.shape[2]//4            
+                identity = self.downsample(x)[:,:, shape:shape*3, shape:shape*3]
+            elif self.shortcut == "projection":
+                identity = self.downsample(x)
+
 
         out = torch.add(out, identity)
 
@@ -188,12 +208,14 @@ class _Bottleneck_v2(nn.Module):
             downsample: Optional[nn.Module] = None,
             groups: int = 1,
             base_channels: int = 16,
+            shortcut: str = "identity",
     ) -> None:
         super(_Bottleneck_v2, self).__init__()
         self.stride = stride
         self.downsample = downsample
         self.groups = groups
         self.base_channels = base_channels
+        self.shortcut = shortcut
 
         channels = int(out_channels * (base_channels / 16.0)) * groups
 
@@ -221,7 +243,12 @@ class _Bottleneck_v2(nn.Module):
         out = self.conv3(out)
 
         if self.downsample is not None:
-            identity = self.downsample(x)
+            if self.shortcut == "identity":
+                shape = identity.shape[2]//4            
+                identity = self.downsample(x)[:,:, shape:shape*3, shape:shape*3]
+            elif self.shortcut == "projection":
+                identity = self.downsample(x)
+
 
         out = torch.add(out, identity)
         out = self.relu(out)
@@ -238,6 +265,7 @@ class ResNet(nn.Module):
             groups: int = 1,
             channels_per_group: int = 16,
             num_classes: int = 10,
+            shortcut: str = "identity",
     ) -> None:
         super(ResNet, self).__init__()
         self.in_channels = 16
@@ -250,9 +278,9 @@ class ResNet(nn.Module):
         self.relu = nn.ReLU(True)
         self.maxpool = nn.MaxPool2d((3, 3), (2, 2), (1, 1))
 
-        self.layer1 = self._make_layer(arch_cfg[0], block, 16, 1)
-        self.layer2 = self._make_layer(arch_cfg[1], block, 32, 2)
-        self.layer3 = self._make_layer(arch_cfg[2], block, 64, 2)
+        self.layer1 = self._make_layer(arch_cfg[0], block, 16, 1, shortcut)
+        self.layer2 = self._make_layer(arch_cfg[1], block, 32, 2, shortcut)
+        self.layer3 = self._make_layer(arch_cfg[2], block, 64, 2, shortcut)
 
         self.avgpool = nn.AdaptiveAvgPool2d((1, 1))
 
@@ -267,14 +295,19 @@ class ResNet(nn.Module):
             block: Type[Union[_BasicBlock, _Bottleneck_v1, _BasicBlock_v2, _Bottleneck_v2]],
             channels: int,
             stride: int = 1,
+            shortcut: str = "identity",
     ) -> nn.Sequential:
         downsample = None
 
         if stride != 1 or self.in_channels != channels * block.expansion:
-            downsample = nn.Sequential(
-                nn.Conv2d(self.in_channels, channels * block.expansion, (1, 1), (stride, stride), (0, 0), bias=False),
-                nn.BatchNorm2d(channels * block.expansion),
-            )
+            if shortcut == "projection":
+                downsample = nn.Sequential(
+                    nn.Conv2d(self.in_channels, channels * block.expansion, (1, 1), (stride, stride), (0, 0), bias=False),
+                    nn.BatchNorm2d(channels * block.expansion),
+                )
+            elif shortcut == "identity":
+                downsample = nn.ZeroPad2d([ 0, 0, 0, 0, channels//block.expansion, channels//block.expansion])
+                
 
         layers = [
             block(
