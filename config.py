@@ -30,7 +30,6 @@ model_arch_name = "resnet56_bottleneck_v1"
 warmup = True
 regularization = True
 k = 3
-shortcut_connection = "identity"
 # Model normalization parameters
 subtract_pixel_mean = False
 # model_mean_parameters = [0.49139968, 0.48215845, 0.4465309]

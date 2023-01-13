@@ -69,20 +69,23 @@ class _BasicBlock(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         identity = x
-
+        print('bottleneck')
+        print(x.shape)
         out = self.conv1(x)
+        print(out.shape)        
         out = self.bn1(out)
         out = self.relu(out)
 
         out = self.conv2(out)
+        print(out.shape)
         out = self.bn2(out)
 
         if self.downsample is not None:
             if self.shortcut == "identity":
-                shape = identity.shape[2]//4            
-                identity = self.downsample(x)[:,:, shape:shape*3, shape:shape*3]
+                identity = identity.permute(0,2,3,1)
+                identity = self.downsample(identity).permute(0,3,1,2)[:, :, ::2, ::2]
             elif self.shortcut == "projection":
-                identity = self.downsample(x)
+                identity = self.downsample(identity)
 
         out = torch.add(out, identity)
         out = self.relu(out)
@@ -102,7 +105,6 @@ class _Bottleneck_v1(nn.Module):
             groups: int = 1,
             base_channels: int = 16,
             shortcut: str = "identity",
-
     ) -> None:
         super(_Bottleneck_v1, self).__init__()
         self.stride = stride
@@ -137,10 +139,10 @@ class _Bottleneck_v1(nn.Module):
 
         if self.downsample is not None:
             if self.shortcut == "identity":
-                shape = identity.shape[2]//4            
-                identity = self.downsample(x)[:,:, shape:shape*3, shape:shape*3]
+                identity = identity.permute(0,2,3,1)
+                identity = self.downsample(identity).permute(0,3,1,2)[:, :, ::2, ::2]
             elif self.shortcut == "projection":
-                identity = self.downsample(x)
+                identity = self.downsample(identity)
 
         out = torch.add(out, identity)
         out = self.relu(out)
@@ -166,7 +168,7 @@ class _BasicBlock_v2(nn.Module):
         self.groups = groups
         self.base_channels = base_channels
         self.shortcut = shortcut
-        
+
         self.bn1 = nn.BatchNorm2d(in_channels)
         self.conv1 = nn.Conv2d(in_channels, out_channels, (3, 3), (stride, stride), (1, 1), bias=False)
         self.bn2 = nn.BatchNorm2d(out_channels)
@@ -175,25 +177,23 @@ class _BasicBlock_v2(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         identity = x
-
         out = self.bn1(x)
         out = self.relu(out)
         out = self.conv1(out)
-
+        
         out = self.bn2(out)
         out = self.relu(out)
         out = self.conv2(out)
 
         if self.downsample is not None:
             if self.shortcut == "identity":
-                shape = identity.shape[2]//4            
-                identity = self.downsample(x)[:,:, shape:shape*3, shape:shape*3]
+                identity = identity.permute(0,2,3,1)
+                identity = self.downsample(identity).permute(0,3,1,2)[:, :, ::2, ::2]
             elif self.shortcut == "projection":
-                identity = self.downsample(x)
-
-
+                identity = self.downsample(identity)
+        
         out = torch.add(out, identity)
-
+        
         return out
 
 
@@ -229,27 +229,25 @@ class _Bottleneck_v2(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         identity = x
-
         out = self.bn1(x)
         out = self.relu(out)
         out = self.conv1(out)
-
+        
         out = self.bn2(out)
         out = self.relu(out)
         out = self.conv2(out)
-
+        
         out = self.bn3(out)
         out = self.relu(out)
         out = self.conv3(out)
 
         if self.downsample is not None:
             if self.shortcut == "identity":
-                shape = identity.shape[2]//4            
-                identity = self.downsample(x)[:,:, shape:shape*3, shape:shape*3]
+                identity = identity.permute(0,2,3,1)
+                identity = self.downsample(identity).permute(0,3,1,2)[:, :, ::2, ::2]
             elif self.shortcut == "projection":
-                identity = self.downsample(x)
-
-
+                identity = self.downsample(identity)
+                
         out = torch.add(out, identity)
         out = self.relu(out)
 
@@ -268,15 +266,14 @@ class ResNet(nn.Module):
             shortcut: str = "identity",
     ) -> None:
         super(ResNet, self).__init__()
-        self.in_channels = 16
+        self.in_channels = 64 if block in [_Bottleneck_v1, _Bottleneck_v2] else 16
         self.dilation = 1
         self.groups = groups
         self.base_channels = channels_per_group
 
-        self.conv1 = nn.Conv2d(3, self.in_channels, (7, 7), (2, 2), (3, 3), bias=False)
+        self.conv1 = nn.Conv2d(3, self.in_channels, (3, 3), stride=(1, 1), padding='same', bias=False)
         self.bn1 = nn.BatchNorm2d(self.in_channels)
         self.relu = nn.ReLU(True)
-        self.maxpool = nn.MaxPool2d((3, 3), (2, 2), (1, 1))
 
         self.layer1 = self._make_layer(arch_cfg[0], block, 16, 1, shortcut)
         self.layer2 = self._make_layer(arch_cfg[1], block, 32, 2, shortcut)
@@ -299,16 +296,15 @@ class ResNet(nn.Module):
     ) -> nn.Sequential:
         downsample = None
 
-        if stride != 1 or self.in_channels != channels * block.expansion:
+        if stride != 1:
             if shortcut == "projection":
                 downsample = nn.Sequential(
-                    nn.Conv2d(self.in_channels, channels * block.expansion, (1, 1), (stride, stride), (0, 0), bias=False),
+                    nn.Conv2d(self.in_channels, channels * block.expansion, (1, 1), (stride, stride), bias=False),
                     nn.BatchNorm2d(channels * block.expansion),
-                )
+                    )
             elif shortcut == "identity":
-                downsample = nn.ZeroPad2d([ 0, 0, 0, 0, channels//block.expansion, channels//block.expansion])
-                
-
+                padding = channels if block in [_Bottleneck_v1, _Bottleneck_v2] else channels // 4
+                downsample = nn.ZeroPad2d((padding, padding))
         layers = [
             block(
                 self.in_channels,
@@ -316,7 +312,8 @@ class ResNet(nn.Module):
                 stride,
                 downsample,
                 self.groups,
-                self.base_channels
+                self.base_channels,
+                shortcut,
             )
         ]
         self.in_channels = channels * block.expansion
@@ -329,6 +326,7 @@ class ResNet(nn.Module):
                     None,
                     self.groups,
                     self.base_channels,
+                    shortcut,
                 )
             )
 
@@ -344,7 +342,6 @@ class ResNet(nn.Module):
         out = self.conv1(x)
         out = self.bn1(out)
         out = self.relu(out)
-        out = self.maxpool(out)
 
         out = self.layer1(out)
         out = self.layer2(out)
