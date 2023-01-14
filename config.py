@@ -22,14 +22,15 @@ random.seed(0)
 torch.manual_seed(0)
 np.random.seed(0)
 # Use GPU for training by default
-device = torch.device("cuda", 1)
+device = torch.device("cuda", 0)
 # Turning on when the image size does not change during training can speed up training
 cudnn.benchmark = True
 # Model arch name
 model_arch_name = "resnet56_bottleneck_v1"
-warmup = True
-regularization = True
+warmup = False
+regularization = False
 k = 3
+shortcut_connection = "identity"
 # Model normalization parameters
 subtract_pixel_mean = False
 # model_mean_parameters = [0.49139968, 0.48215845, 0.4465309]
@@ -68,7 +69,7 @@ if mode == "train":
     # Optimizer parameter
     model_lr = 0.1
     model_momentum = 0.9
-    model_weight_decay = 0 # 1e-04
+    model_weight_decay = 1e-04
     
     # Scheduler parameters
     warmup_drop = 3 # about 800 steps

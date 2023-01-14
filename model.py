@@ -69,15 +69,11 @@ class _BasicBlock(nn.Module):
 
     def forward(self, x: Tensor) -> Tensor:
         identity = x
-        print('bottleneck')
-        print(x.shape)
         out = self.conv1(x)
-        print(out.shape)        
         out = self.bn1(out)
         out = self.relu(out)
 
         out = self.conv2(out)
-        print(out.shape)
         out = self.bn2(out)
 
         if self.downsample is not None:

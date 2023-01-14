@@ -52,9 +52,7 @@ class ImageDataset(Dataset):
     def __init__(self, image_size: int, image_file_paths: list, subtract_pixel_mean: bool, mode: str) -> None: # image_dir: str,
         super(ImageDataset, self).__init__()
         # Iterate over all image paths
-        self.image_file_paths =  image_file_paths # glob(f"{image_dir}/*/*")
-        # Form image class label pairs by the folder where the image is located
-        # _, self.class_to_idx = find_classes(image_dir)
+        self.image_file_paths =  image_file_paths
         self.image_size = image_size
         self.mode = mode
         self.delimiter = delimiter
@@ -92,7 +90,7 @@ class ImageDataset(Dataset):
                              "please check the image file extensions.")
 
         # BGR to RGB
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+        # image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
         # OpenCV convert PIL
         image = Image.fromarray(image)

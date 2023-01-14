@@ -167,7 +167,7 @@ def load_dataset(ind) -> CUDAPrefetcher:
 
 
 def build_model() -> nn.Module:
-    resnet_model = model.__dict__[config.model_arch_name](num_classes=config.model_num_classes)
+    resnet_model = model.__dict__[config.model_arch_name](num_classes=config.model_num_classes, shortcut=config.shortcut_connection)
     resnet_model = resnet_model.to(device=config.device, memory_format=torch.channels_last)
     
     return resnet_model
